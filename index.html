@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>Cambridge Tracker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%236366f1'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='white' font-family='Arial'%3E%E2%9C%93%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0f172a;
+    --card:#1e293b;
+    --border:#334155;
+    --text:#e2e8f0;
+    --muted:#94a3b8;
+    --accent:#6366f1;
+    --done:#16a34a;
+    --done-bg:#052e16;
+    --field-bg:#0f172a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI',Tahoma,Arial,sans-serif;
+    background:linear-gradient(135deg,#0f172a,#1e1b4b);
+    color:var(--text);
+    min-height:100vh;
+    padding:32px 16px;
+  }
+  .wrap{max-width:900px;margin:0 auto;}
+  h1{
+    text-align:center;
+    font-size:28px;
+    margin-bottom:4px;
+    background:linear-gradient(90deg,#818cf8,#c084fc);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .subtitle{text-align:center;color:var(--muted);margin-bottom:24px;font-size:14px;}
+  .progress-bar{
+    background:var(--card);
+    border-radius:999px;
+    height:14px;
+    overflow:hidden;
+    margin-bottom:8px;
+    border:1px solid var(--border);
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg,#22c55e,#4ade80);
+    width:0%;
+    transition:width .4s ease;
+  }
+  .progress-label{text-align:center;color:var(--muted);font-size:13px;margin-bottom:28px;}
+  .grid{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .book{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px 18px;
+    transition:background .3s, border-color .3s;
+  }
+  .book.complete{
+    background:var(--done-bg);
+    border-color:var(--done);
+    box-shadow:0 0 0 1px rgba(74,222,128,.25);
+  }
+  .book h2{
+    margin:0 0 10px;
+    font-size:17px;
+    color:#c7d2fe;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .book.complete h2{color:#86efac;}
+  .book h2 span.count{font-size:12px;color:var(--muted);font-weight:normal;}
+  .book.complete h2 span.count{color:#4ade80;}
+
+  .test-block{
+    border-bottom:1px solid var(--border);
+  }
+  .test-block:last-child{border-bottom:none;}
+
+  .test-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px;
+    cursor:pointer;
+    transition:background .2s;
+    user-select:none;
+  }
+  .test-row:hover{background:#273549;}
+  .test-row.done{
+    background:var(--done-bg);
+  }
+  .checkbox{
+    width:20px;height:20px;
+    border-radius:6px;
+    border:2px solid var(--muted);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+    transition:all .2s;
+  }
+  .test-row.done .checkbox{
+    background:var(--done);
+    border-color:var(--done);
+  }
+  .checkbox svg{width:13px;height:13px;opacity:0;transition:opacity .15s;}
+  .test-row.done .checkbox svg{opacity:1;}
+  .test-label{font-size:14px;color:var(--text);}
+  .test-row.done .test-label{color:#86efac;text-decoration:line-through;text-decoration-color:#4ade80;}
+
+  .overall-badge{
+    margin-left:auto;
+    font-size:12px;
+    color:var(--muted);
+    background:var(--field-bg);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:3px 10px;
+    white-space:nowrap;
+  }
+  .overall-badge.has-value{
+    color:#fbbf24;
+    border-color:#b45309;
+  }
+
+  .chevron{
+    width:16px;height:16px;
+    color:var(--muted);
+    transition:transform .2s;
+    flex-shrink:0;
+  }
+  .test-block.expanded .chevron{transform:rotate(180deg);}
+
+  .score-panel{
+    display:none;
+    padding:4px 10px 16px;
+  }
+  .test-block.expanded .score-panel{display:block;}
+
+  .score-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .score-field{
+    background:var(--field-bg);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 12px;
+  }
+  .score-field label{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:11px;
+    letter-spacing:.03em;
+    color:var(--muted);
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .score-field input{
+    width:100%;
+    background:#1e293b;
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:8px;
+    font-size:14px;
+    padding:8px 6px;
+    text-align:center;
+  }
+  .score-field input:focus{outline:none;border-color:var(--accent);}
+
+  .overall-panel{
+    background:var(--field-bg);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px;
+    text-align:center;
+  }
+  .overall-panel .ov-title{font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .overall-panel .ov-value{font-size:20px;font-weight:bold;color:#fbbf24;}
+  .overall-panel .ov-value.empty{color:var(--muted);font-size:14px;font-weight:normal;}
+  .countdown-wrap{
+    display:flex;
+    justify-content:center;
+    margin-bottom:18px;
+  }
+  .countdown-badge{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:10px 22px;
+    text-align:center;
+    min-width:110px;
+  }
+  .countdown-badge .cd-number{
+    font-size:26px;
+    font-weight:bold;
+    color:#ef4444;
+    line-height:1.1;
+  }
+  .countdown-badge .cd-label{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="countdown-wrap">
+    <div class="countdown-badge">
+      <div class="cd-number" id="cdNumber">—</div>
+      <div class="cd-label" id="cdLabel">days left</div>
+    </div>
+  </div>
+
+  <h1>📚 Cambridge IELTS Test Tracker</h1>
+  <div class="subtitle">Books 18 to 21 — mark each test after you finish it</div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="progress-label" id="progressLabel">Loading...</div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const books = [18,19,20,21];
+const testsPerBook = 4;
+const STORAGE_KEY = 'cambridge-tracker-state';
+
+let state = {}; // { "17-1": {done:true, reading:'', listening:'', speaking:'', writing:'', expanded:false}, ... }
+const expandedSet = {}; // UI-only, not persisted
+
+function cellKey(book, test){ return book + '-' + test; }
+
+const hasClaudeStorage = typeof window.storage !== 'undefined';
+
+async function loadState(){
+  try{
+    if(hasClaudeStorage){
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value) state = JSON.parse(res.value);
+    } else {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) state = JSON.parse(raw);
+    }
+  }catch(e){
+    state = {};
+  }
+  render();
+}
+
+async function saveState(attempt = 1){
+  try{
+    if(hasClaudeStorage){
+      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+      if(!result) throw new Error('empty result');
+    } else {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+  }catch(e){
+    if(attempt < 6){
+      setTimeout(()=>saveState(attempt + 1), 500 * attempt);
+    }
+    // silent — keeps retrying in background
+  }
+}
+
+function getEntry(book, test){
+  const key = cellKey(book, test);
+  if(!state[key]) state[key] = {done:false, reading:'', listening:'', speaking:'', writing:''};
+  return state[key];
+}
+
+function toggleDone(book, test){
+  const entry = getEntry(book, test);
+  entry.done = !entry.done;
+  saveState();
+  render();
+}
+
+function toggleExpand(book, test){
+  const key = cellKey(book, test);
+  expandedSet[key] = !expandedSet[key];
+  render();
+}
+
+function updateField(book, test, field, value){
+  const entry = getEntry(book, test);
+  entry[field] = value;
+  saveState();
+
+  // live-patch only the overall score displays, without rebuilding inputs
+  const key = cellKey(book, test);
+  const overall = computeOverall(entry);
+
+  const badge = document.querySelector(`.overall-badge[data-key="${key}"]`);
+  if(badge){
+    badge.textContent = overall !== null ? ('Overall: ' + overall) : 'Overall: —';
+    badge.classList.toggle('has-value', overall !== null);
+  }
+}
+
+// --- IELTS band conversion tables (raw score out of 40 -> band) ---
+const listeningTable = [
+  [39,40,9],[37,38,8.5],[35,36,8],[32,34,7.5],[30,31,7],
+  [26,29,6.5],[23,25,6],[18,22,5.5],[16,17,5],[13,15,4.5],
+  [10,12,4],[8,9,3.5],[6,7,3],[4,5,2.5]
+];
+const readingTable = [
+  [39,40,9],[37,38,8.5],[35,36,8],[33,34,7.5],[30,32,7],
+  [27,29,6.5],[23,26,6],[19,22,5.5],[15,18,5],[13,14,4.5],
+  [10,12,4],[8,9,3.5],[6,7,3],[4,5,2.5]
+];
+
+function rawToBand(raw, table){
+  const n = parseFloat(raw);
+  if(isNaN(n)) return null;
+  for(const [min,max,band] of table){
+    if(n >= min && n <= max) return band;
+  }
+  if(n > 40) return 9;
+  if(n <= 3) return 2;
+  return null;
+}
+
+function parseBandInput(val){
+  const n = parseFloat(val);
+  if(isNaN(n)) return null;
+  return n;
+}
+
+function roundOverall(avg){
+  const floor = Math.floor(avg*4)/4; // work in quarters to avoid float issues
+  const frac = avg - Math.floor(avg);
+  const base = Math.floor(avg);
+  if(frac < 0.25) return base;
+  if(frac < 0.75) return base + 0.5;
+  return base + 1;
+}
+
+function computeOverall(entry){
+  const rBand = rawToBand(entry.reading, readingTable);
+  const lBand = rawToBand(entry.listening, listeningTable);
+  const sBand = parseBandInput(entry.speaking);
+  const wBand = parseBandInput(entry.writing);
+  const bands = [rBand, lBand, sBand, wBand];
+  if(bands.some(b => b === null)) return null;
+  const avg = bands.reduce((a,b)=>a+b,0) / 4;
+  return roundOverall(avg);
+}
+
+function render(){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  let doneCount = 0;
+  const total = books.length * testsPerBook;
+
+  books.forEach(book=>{
+    const bookDiv = document.createElement('div');
+    bookDiv.className = 'book';
+
+    let bookDone = 0;
+    for(let t=1;t<=testsPerBook;t++){
+      const key = cellKey(book,t);
+      if(state[key] && state[key].done) bookDone++;
+    }
+    doneCount += bookDone;
+
+    if(bookDone === testsPerBook){
+      bookDiv.classList.add('complete');
+    }
+
+    const h2 = document.createElement('h2');
+    h2.innerHTML = `Cambridge ${book} <span class="count">${bookDone}/${testsPerBook}</span>`;
+    bookDiv.appendChild(h2);
+
+    for(let t=1;t<=testsPerBook;t++){
+      const key = cellKey(book,t);
+      const entry = getEntry(book,t);
+      const overall = computeOverall(entry);
+      const isExpanded = !!expandedSet[key];
+
+      const block = document.createElement('div');
+      block.className = 'test-block' + (isExpanded ? ' expanded' : '');
+
+      // --- row ---
+      const row = document.createElement('div');
+      row.className = 'test-row' + (entry.done ? ' done' : '');
+
+      const box = document.createElement('div');
+      box.className = 'checkbox';
+      box.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
+      box.addEventListener('click', (e)=>{ e.stopPropagation(); toggleDone(book,t); });
+
+      const label = document.createElement('div');
+      label.className = 'test-label';
+      label.textContent = 'Test ' + t;
+
+      const badge = document.createElement('div');
+      badge.className = 'overall-badge' + (overall !== null ? ' has-value' : '');
+      badge.textContent = overall !== null ? ('Overall: ' + overall) : 'Overall: —';
+      badge.dataset.key = key;
+      badge.dataset.role = 'badge';
+
+      const chevron = document.createElement('div');
+      chevron.className = 'chevron';
+      chevron.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+
+      row.appendChild(box);
+      row.appendChild(label);
+      row.appendChild(badge);
+      row.appendChild(chevron);
+      row.addEventListener('click', ()=>toggleExpand(book,t));
+
+      // --- score panel ---
+      const panel = document.createElement('div');
+      panel.className = 'score-panel';
+
+      const scoreGrid = document.createElement('div');
+      scoreGrid.className = 'score-grid';
+
+      const fields = [
+        {key:'reading', title:'READING (/40)', icon:'📖', ph:'e.g. 29'},
+        {key:'listening', title:'LISTENING (/40)', icon:'🎧', ph:'e.g. 32'},
+        {key:'speaking', title:'SPEAKING (Band)', icon:'🗣️', ph:'e.g. 6.5'},
+        {key:'writing', title:'WRITING (Band)', icon:'✍️', ph:'e.g. 6.0'},
+      ];
+
+      fields.forEach(f=>{
+        const fieldDiv = document.createElement('div');
+        fieldDiv.className = 'score-field';
+
+        const lbl = document.createElement('label');
+        lbl.innerHTML = `<span>${f.title}</span><span>${f.icon}</span>`;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.inputMode = 'decimal';
+        input.placeholder = f.ph;
+        input.value = entry[f.key] || '';
+        input.addEventListener('click', e=>e.stopPropagation());
+        input.addEventListener('input', e=>updateField(book,t,f.key,e.target.value));
+
+        fieldDiv.appendChild(lbl);
+        fieldDiv.appendChild(input);
+        scoreGrid.appendChild(fieldDiv);
+      });
+
+      panel.appendChild(scoreGrid);
+
+      block.appendChild(row);
+      block.appendChild(panel);
+      bookDiv.appendChild(block);
+    }
+
+    grid.appendChild(bookDiv);
+  });
+
+  const pct = Math.round((doneCount/total)*100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${doneCount} of ${total} tests (${pct}%)`;
+}
+
+// --- exam countdown ---
+function updateCountdown(){
+  const examDate = new Date('2026-08-22T00:00:00');
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((examDate - todayMidnight) / (1000*60*60*24));
+
+  const numEl = document.getElementById('cdNumber');
+  const labelEl = document.getElementById('cdLabel');
+
+  if(diffDays > 1){
+    numEl.textContent = diffDays;
+    labelEl.textContent = 'days left';
+  } else if(diffDays === 1){
+    numEl.textContent = '1';
+    labelEl.textContent = 'day left';
+  } else if(diffDays === 0){
+    numEl.textContent = 'Today';
+    labelEl.textContent = 'exam day';
+  } else {
+    numEl.textContent = 'Done';
+    labelEl.textContent = 'exam has passed';
+  }
+}
+updateCountdown();
+
+loadState();
+</script>
+</body>
+</html>
